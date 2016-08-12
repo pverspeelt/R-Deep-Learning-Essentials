@@ -20,12 +20,15 @@ digits_y <- digits_train$label[i]
 barplot(table(digits_y))
 
 
+# nnet -------------------------------------------------
+
 library(caret)
 library(nnet)
 
+###########################
+# Model 1
 # start out with 5 hidden neurons
 # maximum number of weights at 10000
-
 set.seed(1234)
 digits_model1 <- train(x = digits_x, 
                        y = digits_y,
@@ -44,6 +47,8 @@ confusionMatrix(xtabs(~pred_model1 + digits_y))
 # accuracy of 44.32%
 
 
+###########################
+# Model 2
 # increasing from 5 to 10 hidden neurons
 # increasing maximum number of weights from 10000 to 50000
 set.seed(1234)
@@ -67,4 +72,124 @@ barplot(table(pred_model2))
 
 confusionMatrix(xtabs(~pred_model2 + digits_y))
 # accuracy of 57.64%
+
+###########################
+# Model 3
+# increasing from 10 to 40 hidden neurons
+# maximum number of weights stays the same
+set.seed(1234)
+starttime <- Sys.time()
+digits_model3 <- train(x = digits_x, 
+                       y = digits_y,
+                       method = "nnet",
+                       tuneGrid = expand.grid(
+                         .size = c(40),
+                         .decay = 0.1),
+                       trControl = trainControl(method = "none"),
+                       MaxNWts = 50000,
+                       maxit = 100)
+endtime <- Sys.time()
+endtime - starttime
+#  34.63921 mins
+
+
+pred_model3 <- predict(digits_model3)
+barplot(table(pred_model3))
+
+confusionMatrix(xtabs(~pred_model3 + digits_y))
+# accuracy of 81.1%
+
+# Model performance 3 5 8 9 still not great
+
+# RSNNS ---------------------------------------------------
+# Stuttgart Neural Network Simulator
+
+library(RSNNS)
+
+set.seed(1234)
+starttime <- Sys.time()
+digits_model4 <- mlp(as.matrix(digits_x),
+                 decodeClassLabels(digits_y),
+                 size = 40,
+                 learnFunc = "Rprop",
+                 shufflePatterns = FALSE,
+                 maxit = 60)
+
+endtime <- Sys.time()
+endtime - starttime
+# 2.930157 mins
+
+#  As before, we can get in-sample predictions, but here we have to use another function, fitted.values(). 
+# Because this again returns a matrix where each column represents a single digit, 
+# we use the encodeClassLabels() function to convert back into a single vector of digit labels to plot 
+# and evaluate model performance
+
+
+fitted_model4 <- fitted.values(digits_model4)
+fitted_model4 <- encodeClassLabels(fitted_model4)
+barplot(table(pred_model4))
+
+# The only catch is that, when the output is encoded back into a single vector, 
+# by default the digits are labeled 1 to k, where k is the number of classes. 
+# Because the digits are 0 to 9, to make them match the original digit vector, we subtract 1
+caret::confusionMatrix(xtabs(~ I(pred_model4 - 1) + digits_y))
+# accuracy of 87.64%
+
+
+
+# previous part but done in caret (not in book)
+library(caret)
+set.seed(1234)
+starttime <- Sys.time()
+digits_model4a <- train(x = digits_x, 
+                        y = digits_y,
+                        method = "mlp",
+                        tuneGrid = expand.grid(
+                           .size = c(40)),
+                        trControl = trainControl(method = "none"),
+                        learnFunc = "Rprop",
+                        shufflePatterns = FALSE,
+                        maxit = 60)
+endtime <- Sys.time()
+endtime - starttime
+# 2.936794 mins
+
+pred_model4a <- predict(digits_model4a)
+barplot(table(pred_model4a))
+
+confusionMatrix(xtabs(~pred_model4a + digits_y))
+# accuracy of 86.26% but t
+
+# Predictions --------------------------
+
+insample_digits_model4 <- fitted.values(digits_model4)
+head(round(insample_digits_model4, 2))
+
+# WTA = winner takes all
+table(encodeClassLabels(insample_digits_model4,
+                        method = "WTA", l = 0, h = 0))
+
+table(encodeClassLabels(insample_digits_model4,
+                        method = "WTA", l = 0, h = .5))
+
+table(encodeClassLabels(insample_digits_model4,
+                        method = "WTA", l = .2, h = .5))
+
+# 402040 classifies if only one value is above a user-defined threshold, 
+# and all other values are below another user-defined threshold
+# if multiple values are above the first threshold, 
+# or any value is not below the second threshold, 
+# it treats the observation as unknown.
+table(encodeClassLabels(insample_digits_model4,
+                        method = "402040", l = .4, h = .6))
+
+
+i2 <- 5001:10000
+pred_digits_model4 <- predict(digits_model4, 
+                             as.matrix(digits_train[i2, -1]))
+
+table(encodeClassLabels(pred_digits_model4,
+                        method = "WTA", l = 0, h = 0))
+
+# Over Fitting ---------------
 
