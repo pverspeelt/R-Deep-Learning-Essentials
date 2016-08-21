@@ -119,11 +119,17 @@ performance_outsample <- do.call(rbind, lapply(1:5, function(i) {
         as.data.frame(t(res$overall[c("AccuracyNull", "Accuracy", "AccuracyLower", "AccuracyUpper")])))
 }))
 
-options_old <- options(digits = 2)
+
+stopCluster(cl)
+
+
+op <- options()
+options(digits = 2)
+
 performance_insample[,-4]
 performance_outsample[,-4]
 
-options <- options_old
+options(op) 
 
 # conclusion
 # First of all, these results show that we are able to classify 
