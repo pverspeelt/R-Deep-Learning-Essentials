@@ -40,9 +40,11 @@ digits_model1 <- train(x = digits_x,
                        MaxNWts = 10000,
                        maxit = 100)
 
+# predict on training data
 pred_model1 <- predict(digits_model1)
 barplot(table(pred_model1))
 
+#confusionMatrix on training data
 confusionMatrix(xtabs(~pred_model1 + digits_y))
 # accuracy of 44.32%
 
@@ -192,4 +194,57 @@ table(encodeClassLabels(pred_digits_model4,
                         method = "WTA", l = 0, h = 0))
 
 # Over Fitting ---------------
+caret::confusionMatrix(xtabs(~ digits_train$label[i2] +
+                               I(encodeClassLabels(pred_digits_model4) - 1)))
+# accuracy of 83.6%.
+
+# this is 4 percent lower. Model4 is overestimating by 4%.
+
+
+pred_yhat_model1 <- predict(digits_model1, digits_train$label[i2])
+pred_yhat_model2 <- predict(digits_model2, digits_train$label[i2])
+pred_yhat_model3 <- predict(digits_model3, digits_train$label[i2])
+
+measures <- c("AccuracyNull", "Accuracy", "AccuracyLower", "AccuracyUpper")
+
+nn5_insample <- caret::confusionMatrix(xtabs(~digits_y + pred_model1))
+nn5_outsample <- caret::confusionMatrix(xtabs(~digits_train$label[i2] + pred_yhat_model1))
+
+nn10_insample <- caret::confusionMatrix(xtabs(~digits_y + pred_model2))
+nn10_outsample <- caret::confusionMatrix(xtabs(~digits_train$label[i2] + pred_yhat_model2))
+
+nn40_insample <- caret::confusionMatrix(xtabs(~digits_y + pred_model3))
+nn40_outsample <- caret::confusionMatrix(xtabs(~digits_train$label[i2] + pred_yhat_model3))
+
+rssn40_insample <- caret::confusionMatrix(xtabs(~digits_y + I(fitted_model4-1)))
+rssn40_outsample <- caret::confusionMatrix(xtabs(~digits_train$label[i2] + I(encodeClassLabels(pred_digits_model4) - 1)))
+
+
+## results
+shrinkage <- rbind(
+  cbind(Size = 5, Sample = "In", as.data.frame(t(nn5_insample$overall[measures]))),
+  cbind(Size = 5, Sample = "Out", as.data.frame(t(nn5_outsample$overall[measures]))),
+  cbind(Size = 10, Sample = "In", as.data.frame(t(nn10_insample$overall[measures]))),
+  cbind(Size = 10, Sample = "Out", as.data.frame(t(nn10_outsample$overall[measures]))),
+  cbind(Size = 40, Sample = "In", as.data.frame(t(nn40_insample$overall[measures]))),
+  cbind(Size = 40, Sample = "Out", as.data.frame(t(nn40_outsample$overall[measures]))),
+  cbind(Size = 40, Sample = "In", as.data.frame(t(rssn40_insample$overall[measures]))),
+  cbind(Size = 40, Sample = "Out", as.data.frame(t(rssn40_outsample$overall[measures])))
+)
+shrinkage$Pkg <- rep(c("nnet", "RSNNS"), c(6, 2))
+
+dodge <- position_dodge(width=0.4)
+
+p_shrinkage <- ggplot(shrinkage, aes(interaction(Size, Pkg, sep = " : "), Accuracy,
+                                     ymin = AccuracyLower, ymax = AccuracyUpper,
+                                     shape = Sample, linetype = Sample)) +
+  geom_point(size = 2.5, position = dodge) +
+  geom_errorbar(width = .25, position = dodge) +
+  xlab("") + ylab("Accuracy + 95% CI") +
+  theme_classic() +
+  theme(legend.key.size = unit(1, "cm"), legend.position = c(.8, .2))
+
+
+print(p_shrinkage)
+
 
