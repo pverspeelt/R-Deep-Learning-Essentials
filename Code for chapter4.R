@@ -1,13 +1,15 @@
 # Auto-encoders
 
+# more info on deeplearning wiht h2o: https://github.com/h2oai/h2o-tutorials/tree/master/tutorials/deeplearning
+
 # load mnist data 
-digits_train <- readr::read_csv("Data/train.csv")
-digits_train$label <- factor(digits_train$label, levels = 0:9)
+# digits_train <- readr::read_csv("Data/train.csv")
+# digits_train$label <- factor(digits_train$label, levels = 0:9)
 
 library(h2o)
-local_h2o <- h2o.init(max_mem_size = "12G", nthreads = 4)
+local_h2o <- h2o.init(max_mem_size = "12G", nthreads = 3)
 
-
+# load mnist data directly via h2o. h2o.importFile imports in parallel
 h2o_digits <- h2o.importFile("Data/train.csv", destination_frame = "h2odigits")
 h2o_digits$label <- as.factor(h2o_digits$label)
 
@@ -27,3 +29,30 @@ xnames <- colnames(h2o_digits_train)
 # Because of the way that Hogwild! works, 
 # it is not possible to make the results exactly replicable
 
+# start with a single layer
+# 50 hidden neurons
+# 20 training iterations => epochs
+# no regularization
+
+# if dropout is specified, use activation "WithDropout"
+# This is different from book
+
+
+
+m1 <- h2o.deeplearning(
+  x = xnames,
+  training_frame= h2o_digits_train,
+  validation_frame = h2o_digits_test,
+  activation = "TanhWithDropout",
+  autoencoder = TRUE,
+  hidden = c(50),
+  epochs = 20,
+  sparsity_beta = 0,
+  input_dropout_ratio = 0,
+  hidden_dropout_ratios = 0,
+  l1 = 0,
+  l2 = 0
+)
+
+
+h2o.shutdown(prompt = FALSE)
