@@ -133,3 +133,6 @@ endtime - starttime
 # 5.753717 mins
 
 fm_final 
+
+
+h2o.shutdown(prompt = FALSE)
