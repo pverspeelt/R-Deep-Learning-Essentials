@@ -104,7 +104,7 @@ mt1 <- h2o.deeplearning(
   epochs = 10,
   loss = "CrossEntropy",
   input_dropout_ratio = .2,
-  hidden_dropout_ratios = c(.5), ,
+  hidden_dropout_ratios = c(.5), 
   export_weights_and_biases = TRUE
 )
 endtime <- Sys.time()
@@ -138,8 +138,59 @@ p.heat <- ggplot(tmp, aes(variable, Row, fill = value)) +
 print(p.heat)
 
 
-## todo
+# Steps for calculating the first layer manually
+# input data
+d <- as.matrix(har_train[, -562])
 
+# biases for hidden layer 1 neurons
+b1 <- as.matrix(h2o.biases(mt1, 1))
+b12 <- do.call(rbind, rep(list(t(b1)), nrow(d)))
+
+# construct the features for layer 1
+# step 1: standardize each column of input data
+d_scaled <- apply(d, 2, scale)
+
+# step 2: multiply scaled data by weights
+# step 3: add the bias matrix
+d_weighted <- d_scaled %*% t(weights1) + b12
+
+# step 4: adjust for drop out ratio 
+d_weighted <- d_weighted * (1 - .5)
+
+# step 5: linear rectifier => take values 0 or higher
+d_weighted_rectifier <- apply(d_weighted, 2, pmax, 0)
+
+
+all.equal(
+  as.numeric(features1[, 1]),
+  d_weighted_rectifier[, 1],
+  check.attributes = FALSE,
+  use.names = FALSE,
+  tolerance = 1e-04)
+
+
+# steps for the second layer
+weights2 <- as.matrix(h2o.weights(mt1, 2))
+
+b2 <- as.matrix(h2o.biases(mt1, 2))
+b22 <- do.call(rbind, rep(list(t(b2)), nrow(d)))
+
+yhat <- d_weighted_rectifier %*% t(weights2) + b22
+
+# steps for softmax function.
+yhat <- exp(yhat)
+normalizer <- do.call(cbind, rep(list(rowSums(yhat)), ncol(yhat)))
+
+yhat <- yhat / normalizer
+
+# final step: derive predicted classifaction
+yhat <- cbind(Outcome = apply(yhat, 1, which.max), yhat)
+
+
+h2o_yhat <- as.data.frame(h2o.predict(mt1, newdata = h2oactivity_train))
+
+# manual process matches that of H2O exactly.
+xtabs(~ yhat[, 1] + h2o_yhat[, 1])
 
 
 h2o.shutdown(prompt = FALSE)
