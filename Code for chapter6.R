@@ -77,7 +77,28 @@ grid.arrange(
 # particularly Section 3, Hyper-Parameters, which discusses the selection 
 # and characteristics of various hyperparameters.
 
+# Grid searching is excellent when there are only a few values for a few parameters.
+# An alternative approach is searching through random sampling.
 
+# To do random sampling: 
+# take a seed and then randomly sample a number of hyperparameters, 
+# store the sampled parameters, run the model, and return the results.
+
+
+par(mfrow = c(2, 1))
+plot(
+  seq(0, .5, by = .001),
+  dbeta(seq(0, .5, by = .001), 1, 12),
+  type = "l", xlab = "x", ylab = "Density",
+  main = "Density of a beta(1, 12)")
+
+plot(
+  seq(0, 1, by = .001)/2,
+  dbeta(seq(0, 1, by = .001), 1.5, 1),
+  type = "l", xlab = "x", ylab = "Density",
+  main = "Density of a beta(1.5, 1) / 2")
+
+# TODO
 
 # stop h2o cluster
 h2o.shutdown(prompt = FALSE)
